@@ -1,0 +1,1 @@
+web: uvicorn blog_gen:app --host=0.0.0.0 --port=${PORT}
