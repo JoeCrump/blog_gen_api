@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog Generation Status</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.5;
+      color: #1e293b;
+      background-color: #f1f5f9;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 800px;
+      width: 100%;
+      background-color: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+      padding: 40px 30px;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      color: #0f172a;
+      font-weight: 600;
+    }
+    
+    .timestamp {
+      background-color: #e0f2fe;
+      color: #0ea5e9;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 20px;
+    }
+    
+    .divider {
+      height: 1px;
+      background: linear-gradient(to right, #e2e8f0, #cbd5e1, #e2e8f0);
+      margin-bottom: 30px;
+    }
+    
+    .task-card {
+      background-color: #f8fafc;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 25px;
+    }
+    
+    .task-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .icon-container {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background-color: #eff6ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 15px;
+    }
+    
+    .task-title {
+      margin: 0 0 5px 0;
+      font-size: 16px;
+      color: #475569;
+    }
+    
+    .task-value {
+      margin: 0;
+      font-family: monospace;
+      font-size: 15px;
+      color: #0f172a;
+      font-weight: 500;
+      word-break: break-all;
+    }
+    
+    .status-card {
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 25px;
+      transition: all 0.3s ease;
+    }
+    
+    .status-card.pending {
+      background-color: #fff7ed;
+      border: 1px solid #fed7aa;
+    }
+    
+    .status-card.processing {
+      background-color: #ecfeff;
+      border: 1px solid #a5f3fc;
+    }
+    
+    .status-card.completed {
+      background-color: #ecfdf5;
+      border: 1px solid #d1fae5;
+    }
+    
+    .status-card.error {
+      background-color: #fef2f2;
+      border: 1px solid #fee2e2;
+    }
+    
+    .status-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .status-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 15px;
+    }
+    
+    .status-icon.pending {
+      background-color: #fff7ed;
+      color: #f59e0b;
+    }
+    
+    .status-icon.processing {
+      background-color: #ecfeff;
+      color: #06b6d4;
+    }
+    
+    .status-icon.completed {
+      background-color: #ecfdf5;
+      color: #10b981;
+    }
+    
+    .status-icon.error {
+      background-color: #fef2f2;
+      color: #ef4444;
+    }
+    
+    .status-title {
+      margin: 0 0 5px 0;
+      font-size: 16px;
+      color: #475569;
+    }
+    
+    .status-value {
+      margin: 0;
+      text-transform: capitalize;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    .status-value.pending {
+      color: #f59e0b;
+    }
+    
+    .status-value.processing {
+      color: #06b6d4;
+    }
+    
+    .status-value.completed {
+      color: #10b981;
+    }
+    
+    .status-value.error {
+      color: #ef4444;
+    }
+    
+    .progress-container {
+      max-width: 100%;
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 15px 0;
+    }
+    
+    .progress-bar {
+      height: 100%;
+      width: 30%;
+      border-radius: 3px;
+      animation: indeterminate 1.5s infinite linear;
+    }
+    
+    .progress-bar.pending {
+      background: linear-gradient(90deg, #fbbf24, #f59e0b);
+    }
+    
+    .progress-bar.processing {
+      background: linear-gradient(90deg, #22d3ee, #06b6d4);
+    }
+    
+    .content-panel {
+      background-color: #f8fafc;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 25px;
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #e2e8f0;
+    }
+    
+    .button-container {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+    
+    .button {
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+    }
+    
+    .button svg {
+      margin-right: 8px;
+    }
+    
+    .button.primary {
+      background-color: #3b82f6;
+      color: white;
+    }
+    
+    .button.secondary {
+      background-color: #e2e8f0;
+      color: #475569;
+    }
+    
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #64748b;
+      font-size: 14px;
+    }
+    
+    .footer a {
+      color: #3b82f6;
+      text-decoration: none;
+    }
+    
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 0;
+    }
+    
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(59, 130, 246, 0.2);
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s ease infinite;
+      margin-bottom: 15px;
+    }
+    
+    .error-container {
+      padding: 20px;
+      background-color: #fef2f2;
+      border-radius: 10px;
+      color: #ef4444;
+      border: 1px solid #fee2e2;
+      margin-bottom: 20px;
+    }
+    
+    @keyframes indeterminate {
+      0% { transform: translateX(-70%); }
+      100% { transform: translateX(100%); }
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        padding: 25px 20px;
+      }
+      
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .timestamp {
+        margin-top: 10px;
+      }
+      
+      .button-container {
+        flex-direction: column;
+      }
+      
+      .button {
+        width: 100%;
+        margin-bottom: 10px;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="app">
+    <div class="header">
+      <h1>Blog Generation Status</h1>
+      <div class="timestamp" id="timestamp"></div>
+    </div>
+    <div class="divider"></div>
+    
+    <!-- Loading State -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Loading task status...</p>
+    </div>
+    
+    <!-- Error State -->
+    <div id="error-container" class="error-container" style="display: none;">
+      <h3 style="margin-top: 0;">Error Loading Task Status</h3>
+      <p id="error-message">Unable to load the task status. Please try again later.</p>
+    </div>
+    
+    <!-- Content (hidden initially) -->
+    <div id="content" style="display: none;">
+      <!-- Task ID Section -->
+      <div class="task-card">
+        <div class="task-header">
+          <div class="icon-container">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </div>
+          <div>
+            <h3 class="task-title">Task ID</h3>
+            <p class="task-value" id="task-id"></p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Status Section -->
+      <div id="status-card" class="status-card pending">
+        <div class="status-header">
+          <div id="status-icon" class="status-icon pending">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+          </div>
+          <div>
+            <h3 class="status-title">Status</h3>
+            <p id="status-value" class="status-value pending">pending</p>
+          </div>
+        </div>
+        
+        <!-- Progress bar for pending/processing states -->
+        <div id="progress-container" class="progress-container">
+          <div id="progress-bar" class="progress-bar pending"></div>
+        </div>
+        
+        <p id="status-message">Your blog post is being generated. This may take a few minutes.</p>
+      </div>
+      
+      <!-- Results Section (only shown when completed) -->
+      <div id="results-section" style="display: none;">
+        <h3>Blog Post Details</h3>
+        <div class="content-panel">
+          <div id="blog-details"></div>
+        </div>
+      </div>
+      
+      <!-- Actions -->
+      <div class="button-container">
+        <button id="refresh-button" class="button primary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+          </svg>
+          Refresh Status
+        </button>
+        <button id="back-button" class="button secondary">Back to Forms</button>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <p>YouTube Blog Generator • <a href="mailto:support@example.com">Contact Support</a></p>
+    </div>
+  </div>
+  
+  <script>
+    // Get task ID from URL query parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const taskId = urlParams.get('task_id');
+    
+    // Elements
+    const loadingEl = document.getElementById('loading');
+    const contentEl = document.getElementById('content');
+    const errorContainerEl = document.getElementById('error-container');
+    const errorMessageEl = document.getElementById('error-message');
+    const taskIdEl = document.getElementById('task-id');
+    const timestampEl = document.getElementById('timestamp');
+    const statusCardEl = document.getElementById('status-card');
+    const statusIconEl = document.getElementById('status-icon');
+    const statusValueEl = document.getElementById('status-value');
+    const statusMessageEl = document.getElementById('status-message');
+    const progressContainerEl = document.getElementById('progress-container');
+    const progressBarEl = document.getElementById('progress-bar');
+    const resultsSectionEl = document.getElementById('results-section');
+    const blogDetailsEl = document.getElementById('blog-details');
+    const refreshButtonEl = document.getElementById('refresh-button');
+    const backButtonEl = document.getElementById('back-button');
+    
+    // Set timestamp
+    timestampEl.textContent = new Date().toLocaleString();
+    
+    // Check if task ID is provided
+    if (!taskId) {
+      showError('No task ID provided. Please make sure the URL includes a task_id parameter.');
+    } else {
+      taskIdEl.textContent = taskId;
+      fetchStatus();
+      
+      // Set up refresh button
+      refreshButtonEl.addEventListener('click', fetchStatus);
+      
+      // Set up back button
+      backButtonEl.addEventListener('click', function() {
+        window.close(); // Close the window if opened in new tab
+      });
+    }
+    
+    function fetchStatus() {
+      // Reset UI to loading state when refreshing
+      loadingEl.style.display = 'flex';
+      contentEl.style.display = 'none';
+      errorContainerEl.style.display = 'none';
+      
+      // Update the timestamp
+      timestampEl.textContent = new Date().toLocaleString();
+      
+      // Fetch task status from API
+      fetch(`https://youtube-blog-gen-2540b5ec7a78.herokuapp.com/task/${taskId}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          updateUI(data);
+        })
+        .catch(error => {
+          showError(`Failed to fetch task status: ${error.message}`);
+        });
+    }
+    
+    function updateUI(data) {
+      // Hide loading, show content
+      loadingEl.style.display = 'none';
+      contentEl.style.display = 'block';
+      
+      // Update status display
+      const status = data.status || 'unknown';
+      
+      // Update UI based on status
+      statusValueEl.textContent = status;
+      
+      // Remove all status classes
+      statusCardEl.classList.remove('pending', 'processing', 'completed', 'error');
+      statusIconEl.classList.remove('pending', 'processing', 'completed', 'error');
+      statusValueEl.classList.remove('pending', 'processing', 'completed', 'error');
+      progressBarEl.classList.remove('pending', 'processing');
+      
+      // Update UI based on status
+      if (status === 'completed' || status === 'success') {
+        // Completed state
+        statusCardEl.classList.add('completed');
+        statusIconEl.classList.add('completed');
+        statusValueEl.classList.add('completed');
+        statusIconEl.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        `;
+        statusMessageEl.textContent = 'Your blog post has been successfully generated!';
+        progressContainerEl.style.display = 'none';
+        
+        // Show results section with blog details
+        resultsSectionEl.style.display = 'block';
+        displayBlogDetails(data);
+        
+      } else if (status === 'failed' || status === 'error') {
+        // Error state
+        statusCardEl.classList.add('error');
+        statusIconEl.classList.add('error');
+        statusValueEl.classList.add('error');
+        statusIconEl.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+        `;
+        statusMessageEl.textContent = data.error || 'An error occurred while generating your blog post.';
+        progressContainerEl.style.display = 'none';
+        
+      } else if (status === 'processing') {
+        // Processing state
+        statusCardEl.classList.add('processing');
+        statusIconEl.classList.add('processing');
+        statusValueEl.classList.add('processing');
+        progressBarEl.classList.add('processing');
+        statusIconEl.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12c0 1.2-.26 2.35-.75 3.4a8 8 0 0 1-2.32 2.74c-2.62 1.75-5.2 2.08-5.75 1.66-.3-.22-.48-.56-.51-.99 0-.05 0-.1.01-.16.1-.82.5-1.5 1.1-2.02.5-.43 1.13-.77 1.89-.91.81-.18 1.56-.66 2.11-1.32.56-.67.89-1.51.89-2.4 0-2.21-2.01-4-4.5-4-1.38 0-2.64.55-3.54 1.46"></path>
+            <path d="M3 12c0-1.2.26-2.35.75-3.4a8 8 0 0 1 2.32-2.74c2.62-1.75 5.2-2.08 5.75-1.66.3.22.48.56.51.99 0 .05 0 .1-.01.16-.1.82-.5 1.5-1.1 2.02-.5.43-1.13.77-1.89.91-.81.18-1.56.66-2.11 1.32-.56.67-.89 1.51-.89 2.4 0 2.21 2.01 4 4.5 4 1.38 0 2.64-.55 3.54-1.46"></path>
+          </svg>
+        `;
+        statusMessageEl.textContent = data.progress || 'Your blog is being processed. This may take a few minutes.';
+        progressContainerEl.style.display = 'block';
+        
+      } else {
+        // Pending or unknown state
+        statusCardEl.classList.add('pending');
+        statusIconEl.classList.add('pending');
+        statusValueEl.classList.add('pending');
+        progressBarEl.classList.add('pending');
+        statusMessageEl.textContent = 'Your blog is waiting to be processed.';
+        progressContainerEl.style.display = 'block';
+      }
+    }
+    
+    function displayBlogDetails(data) {
+      // Clear previous content
+      blogDetailsEl.innerHTML = '';
+      
+      if (data.blog_post || data.word_count || data.focus_keyword) {
+        let detailsHTML = '';
+        
+        if (data.word_count) {
+          detailsHTML += `<p><strong>Word Count:</strong> ${data.word_count}</p>`;
+        }
+        
+        if (data.focus_keyword) {
+          detailsHTML += `<p><strong>Focus Keyword:</strong> ${data.focus_keyword}</p>`;
+        }
+        
+        if (data.video_titles && Array.isArray(data.video_titles)) {
+          detailsHTML += `<p><strong>Videos Used:</strong></p><ul>`;
+          data.video_titles.forEach((title, index) => {
+            detailsHTML += `<li>${title || 'Video ' + (index + 1)}</li>`;
+          });
+          detailsHTML += `</ul>`;
+        }
+        
+        if (data.video_urls && Array.isArray(data.video_urls)) {
+          detailsHTML += `<p><strong>Video URLs:</strong></p><ul>`;
+          data.video_urls.forEach(url => {
+            detailsHTML += `<li><a href="${url}" target="_blank">${url}</a></li>`;
+          });
+          detailsHTML += `</ul>`;
+        }
+        
+        // Add the blog post content if available
+        if (data.blog_post) {
+          detailsHTML += `<h4>Blog Post Content:</h4>`;
+          detailsHTML += `<div style="white-space: pre-wrap; font-family: monospace; background: #f8f9fa; padding: 15px; border-radius: 5px; height: 200px; overflow: auto; margin-top: 10px;">${data.blog_post}</div>`;
+        }
+        
+        blogDetailsEl.innerHTML = detailsHTML;
+      } else {
+        blogDetailsEl.innerHTML = '<p>No additional details available.</p>';
+      }
+    }
+    
+    function showError(message) {
+      loadingEl.style.display = 'none';
+      errorContainerEl.style.display = 'block';
+      errorMessageEl.textContent = message;
+    }
+    
+    // Auto-refresh for pending/processing statuses
+    setInterval(() => {
+      if (statusValueEl.textContent === 'pending' || statusValueEl.textContent === 'processing') {
+        fetchStatus();
+      }
+    }, 30000); // Check every 30 seconds
+  </script>
+</body>
+</html>
