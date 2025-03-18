@@ -9,7 +9,7 @@
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       line-height: 1.5;
       color: #1e293b;
-      background-color: #f1f5f9;
+      background-color: #f1f9f9;
       margin: 0;
       padding: 20px;
       display: flex;
@@ -219,6 +219,16 @@
       max-height: 400px;
       overflow-y: auto;
       border: 1px solid #e2e8f0;
+    }
+    
+    .video-attribution {
+      background-color: #eef2f7;
+      border-left: 4px solid #3b82f6;
+      padding: 10px 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #1e293b;
     }
     
     .button-container {
@@ -462,6 +472,7 @@
       <!-- Results Section (only shown when completed) -->
       <div id="results-section" style="display: none;">
         <h3>Blog Post Details</h3>
+        <div id="video-attribution" class="video-attribution" style="display: none;"></div>
         <div id="blog-details-container" class="content-panel">
           <div id="blog-details"></div>
         </div>
@@ -525,258 +536,277 @@
     const resultsSectionEl = document.getElementById('results-section');
     const blogDetailsEl = document.getElementById('blog-details');
     const blogActionsEl = document.getElementById('blog-actions');
-    const copyHtmlButtonEl = document.getElementById('copy-html-button');
-    const copySuccessEl = document.getElementById('copy-success');
-    const blogPreviewContainerEl = document.getElementById('blog-preview-container');
-    const blogPreviewFrameEl = document.getElementById('blog-preview-frame');
-    const refreshButtonEl = document.getElementById('refresh-button');
-    const backButtonEl = document.getElementById('back-button');
+const copyHtmlButtonEl = document.getElementById('copy-html-button');
+const copySuccessEl = document.getElementById('copy-success');
+const blogPreviewContainerEl = document.getElementById('blog-preview-container');
+const blogPreviewFrameEl = document.getElementById('blog-preview-frame');
+const videoAttributionEl = document.getElementById('video-attribution');
+const refreshButtonEl = document.getElementById('refresh-button');
+const backButtonEl = document.getElementById('back-button');
+
+// Set timestamp
+timestampEl.textContent = new Date().toLocaleString();
+
+// Check if task ID is provided
+if (!taskId) {
+  showError('No task ID provided. Please make sure the URL includes a task_id parameter.');
+} else {
+  taskIdEl.textContent = taskId;
+  fetchStatus();
+  
+  // Set up refresh button
+  refreshButtonEl.addEventListener('click', fetchStatus);
+  
+  // Set up back button
+  backButtonEl.addEventListener('click', function() {
+    window.close(); // Close the window if opened in new tab
+  });
+  
+  // Set up copy HTML button
+  if (copyHtmlButtonEl) {
+    copyHtmlButtonEl.addEventListener('click', function() {
+      const blogData = window.blogData;
+      if (blogData && blogData.blog_post) {
+        navigator.clipboard.writeText(blogData.blog_post).then(function() {
+          copySuccessEl.style.display = 'inline';
+          setTimeout(function() {
+            copySuccessEl.style.display = 'none';
+          }, 3000);
+        });
+      }
+    });
+  }
+}
+
+function fetchStatus() {
+  // Reset UI to loading state when refreshing
+  loadingEl.style.display = 'flex';
+  contentEl.style.display = 'none';
+  errorContainerEl.style.display = 'none';
+  
+  // Update the timestamp
+  timestampEl.textContent = new Date().toLocaleString();
+  
+  // Fetch task status from API
+  fetch(`https://youtube-blog-gen-2540b5ec7a78.herokuapp.com/task/${taskId}`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      updateUI(data);
+    })
+    .catch(error => {
+      showError(`Failed to fetch task status: ${error.message}`);
+    });
+}
+
+function updateUI(data) {
+  // Store blog data globally for copy function
+  window.blogData = data;
+  
+  // Hide loading, show content
+  loadingEl.style.display = 'none';
+  contentEl.style.display = 'block';
+  
+  // Update status display
+  const status = data.status || 'unknown';
+  
+  // Update UI based on status
+  statusValueEl.textContent = status;
+  
+  // Remove all status classes
+  statusCardEl.classList.remove('pending', 'processing', 'completed', 'error');
+  statusIconEl.classList.remove('pending', 'processing', 'completed', 'error');
+  statusValueEl.classList.remove('pending', 'processing', 'completed', 'error');
+  progressBarEl.classList.remove('pending', 'processing');
+  
+  // Update UI based on status
+  if (status === 'completed' || status === 'success') {
+    // Completed state
+    statusCardEl.classList.add('completed');
+    statusIconEl.classList.add('completed');
+    statusValueEl.classList.add('completed');
+    statusIconEl.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      </svg>
+    `;
+    statusMessageEl.textContent = 'Your blog post has been successfully generated!';
+    progressContainerEl.style.display = 'none';
     
-    // Set timestamp
-    timestampEl.textContent = new Date().toLocaleString();
+    // Show results section with blog details
+    resultsSectionEl.style.display = 'block';
     
-    // Check if task ID is provided
-    if (!taskId) {
-      showError('No task ID provided. Please make sure the URL includes a task_id parameter.');
-    } else {
-      taskIdEl.textContent = taskId;
-      fetchStatus();
+    // Check for attribution and handle separately
+    if (data.video_titles && data.video_titles.length > 0) {
+      let attributionText = `Based on content from: ${data.video_titles[0]}`;
+      videoAttributionEl.textContent = attributionText;
+      videoAttributionEl.style.display = 'block';
+    }
+    
+    displayBlogDetails(data);
+    
+  } else if (status === 'failed' || status === 'error') {
+    // Error state
+    statusCardEl.classList.add('error');
+    statusIconEl.classList.add('error');
+    statusValueEl.classList.add('error');
+    statusIconEl.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="15" y1="9" x2="9" y2="15"></line>
+        <line x1="9" y1="9" x2="15" y2="15"></line>
+      </svg>
+    `;
+    statusMessageEl.textContent = data.message || 'An error occurred while generating your blog post.';
+    progressContainerEl.style.display = 'none';
+    
+  } else if (status === 'processing') {
+    // Processing state
+    statusCardEl.classList.add('processing');
+    statusIconEl.classList.add('processing');
+    statusValueEl.classList.add('processing');
+    progressBarEl.classList.add('processing');
+    statusIconEl.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12c0 1.2-.26 2.35-.75 3.4a8 8 0 0 1-2.32 2.74c-2.62 1.75-5.2 2.08-5.75 1.66-.3-.22-.48-.56-.51-.99 0-.05 0-.1.01-.16.1-.82.5-1.5 1.1-2.02.5-.43 1.13-.77 1.89-.91.81-.18 1.56-.66 2.11-1.32.56-.67.89-1.51.89-2.4 0-2.21-2.01-4-4.5-4-1.38 0-2.64.55-3.54 1.46"></path>
+        <path d="M3 12c0-1.2.26-2.35.75-3.4a8 8 0 0 1 2.32-2.74c2.62-1.75 5.2-2.08 5.75-1.66.3.22.48.56.51.99 0 .05 0 .1-.01.16-.1.82-.5 1.5-1.1 2.02-.5.43-1.13.77-1.89.91-.81.18-1.56.66-2.11 1.32-.56.67-.89 1.51-.89 2.4 0 2.21 2.01 4 4.5 4 1.38 0 2.64-.55 3.54-1.46"></path>
+      </svg>
+    `;
+    statusMessageEl.textContent = data.message || 'Your blog is being processed. This may take a few minutes.';
+    progressContainerEl.style.display = 'block';
+    
+  } else {
+    // Pending or unknown state
+    statusCardEl.classList.add('pending');
+    statusIconEl.classList.add('pending');
+    statusValueEl.classList.add('pending');
+    progressBarEl.classList.add('pending');
+    statusMessageEl.textContent = 'Your blog is waiting to be processed.';
+    progressContainerEl.style.display = 'block';
+  }
+}
+
+function displayBlogDetails(data) {
+  // Clear previous content
+  blogDetailsEl.innerHTML = '';
+  
+  if (data.blog_post || data.word_count || data.focus_keyword) {
+    // Enable HTML copy button
+    if (data.blog_post) {
+      blogActionsEl.style.display = 'block';
       
-      // Set up refresh button
-      refreshButtonEl.addEventListener('click', fetchStatus);
+      // Set up the preview iframe with the blog HTML content
+      setTimeout(() => {
+        setupBlogPreview(data.blog_post);
+        blogPreviewContainerEl.style.display = 'block';
+      }, 100);
+    }
+    
+    let detailsHTML = '';
+    
+    // Add focus keyword if available
+    if (data.focus_keyword) {
+      detailsHTML += `
+        <div class="meta-item">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <span class="meta-label">Focus Keyword:</span>
+          <span class="meta-value">${data.focus_keyword}</span>
+        </div>`;
+    }
+    
+    // Add word count if available
+    if (data.word_count) {
+      detailsHTML += `
+        <div class="meta-item">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 7 4 4 20 4 20 7"></polyline>
+            <line x1="9" y1="20" x2="15" y2="20"></line>
+            <line x1="12" y1="4" x2="12" y2="20"></line>
+          </svg>
+          <span class="meta-label">Word Count:</span>
+          <span class="meta-value">${data.word_count.toLocaleString()}</span>
+        </div>`;
+    }
+    
+    // Add keyword presence indicator if available
+    if (data.keyword_presence !== undefined) {
+      detailsHTML += `
+        <div class="meta-item">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${data.keyword_presence ? "#10b981" : "#ef4444"}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            ${data.keyword_presence ? 
+              '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>' : 
+              '<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>'}
+          </svg>
+          <span class="meta-label">Keyword Presence:</span>
+          <span class="meta-value" style="color: ${data.keyword_presence ? "#10b981" : "#ef4444"}">${data.keyword_presence ? "Present" : "Missing"}</span>
+        </div>`;
+    }
+    
+    // Add video sources information
+    if (data.video_titles && Array.isArray(data.video_titles) && data.video_titles.length > 0) {
+      detailsHTML += `<div class="video-metadata">
+        <div class="meta-item">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
+            <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+          </svg>
+          <span class="meta-label">Source Videos:</span>
+        </div>`;
       
-      // Set up back button
-      backButtonEl.addEventListener('click', function() {
-        window.close(); // Close the window if opened in new tab
+      detailsHTML += `<ul style="margin-top: 8px; padding-left: 20px;">`;
+      data.video_titles.forEach((title, index) => {
+        const url = data.video_urls && data.video_urls[index] ? data.video_urls[index] : '#';
+        detailsHTML += `<li style="margin-bottom: 5px;"><a href="${url}" target="_blank" style="color: #3b82f6; text-decoration: none;">${title || 'Unnamed Video'}</a></li>`;
       });
-      
-      // Set up copy HTML button
-      if (copyHtmlButtonEl) {
-        copyHtmlButtonEl.addEventListener('click', function() {
-          const blogData = window.blogData;
-          if (blogData && blogData.blog_post) {
-            navigator.clipboard.writeText(blogData.blog_post).then(function() {
-              copySuccessEl.style.display = 'inline';
-              setTimeout(function() {
-                copySuccessEl.style.display = 'none';
-              }, 3000);
-            });
-          }
-        });
-      }
+      detailsHTML += `</ul></div>`;
     }
     
-    function fetchStatus() {
-      // Reset UI to loading state when refreshing
-      loadingEl.style.display = 'flex';
-      contentEl.style.display = 'none';
-      errorContainerEl.style.display = 'none';
-      
-      // Update the timestamp
-      timestampEl.textContent = new Date().toLocaleString();
-      
-      // Fetch task status from API
-      fetch(`https://youtube-blog-gen-2540b5ec7a78.herokuapp.com/task/${taskId}`)
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-          }
-          return response.json();
-        })
-        .then(data => {
-          updateUI(data);
-        })
-        .catch(error => {
-          showError(`Failed to fetch task status: ${error.message}`);
-        });
-    }
+    blogDetailsEl.innerHTML = detailsHTML;
+  } else {
+    blogDetailsEl.innerHTML = '<p>No additional details available.</p>';
+  }
+}
+
+function showError(message) {
+  loadingEl.style.display = 'none';
+  errorContainerEl.style.display = 'block';
+  errorMessageEl.textContent = message;
+}
+
+function setupBlogPreview(blogHTML) {
+  // Extract attribution if present
+  const attributionMatch = blogHTML.match(/Based on content from:.*?(?=<\/)/);
+  if (attributionMatch && videoAttributionEl) {
+    videoAttributionEl.textContent = attributionMatch[0];
+    videoAttributionEl.style.display = 'block';
     
-    function updateUI(data) {
-      // Store blog data globally for copy function
-      window.blogData = data;
-      
-      // Hide loading, show content
-      loadingEl.style.display = 'none';
-      contentEl.style.display = 'block';
-      
-      // Update status display
-      const status = data.status || 'unknown';
-      
-      // Update UI based on status
-      statusValueEl.textContent = status;
-      
-      // Remove all status classes
-      statusCardEl.classList.remove('pending', 'processing', 'completed', 'error');
-      statusIconEl.classList.remove('pending', 'processing', 'completed', 'error');
-      statusValueEl.classList.remove('pending', 'processing', 'completed', 'error');
-      progressBarEl.classList.remove('pending', 'processing');
-      
-      // Update UI based on status
-      if (status === 'completed' || status === 'success') {
-        // Completed state
-        statusCardEl.classList.add('completed');
-        statusIconEl.classList.add('completed');
-        statusValueEl.classList.add('completed');
-        statusIconEl.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-          </svg>
-        `;
-        statusMessageEl.textContent = 'Your blog post has been successfully generated!';
-        progressContainerEl.style.display = 'none';
-        
-        // Show results section with blog details
-        resultsSectionEl.style.display = 'block';
-        displayBlogDetails(data);
-        
-      } else if (status === 'failed' || status === 'error') {
-        // Error state
-        statusCardEl.classList.add('error');
-        statusIconEl.classList.add('error');
-        statusValueEl.classList.add('error');
-        statusIconEl.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="15" y1="9" x2="9" y2="15"></line>
-            <line x1="9" y1="9" x2="15" y2="15"></line>
-          </svg>
-        `;
-        statusMessageEl.textContent = data.message || 'An error occurred while generating your blog post.';
-        progressContainerEl.style.display = 'none';
-        
-      } else if (status === 'processing') {
-        // Processing state
-        statusCardEl.classList.add('processing');
-        statusIconEl.classList.add('processing');
-        statusValueEl.classList.add('processing');
-        progressBarEl.classList.add('processing');
-        statusIconEl.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 12c0 1.2-.26 2.35-.75 3.4a8 8 0 0 1-2.32 2.74c-2.62 1.75-5.2 2.08-5.75 1.66-.3-.22-.48-.56-.51-.99 0-.05 0-.1.01-.16.1-.82.5-1.5 1.1-2.02.5-.43 1.13-.77 1.89-.91.81-.18 1.56-.66 2.11-1.32.56-.67.89-1.51.89-2.4 0-2.21-2.01-4-4.5-4-1.38 0-2.64.55-3.54 1.46"></path>
-            <path d="M3 12c0-1.2.26-2.35.75-3.4a8 8 0 0 1 2.32-2.74c2.62-1.75 5.2-2.08 5.75-1.66.3.22.48.56.51.99 0 .05 0 .1-.01.16-.1.82-.5 1.5-1.1 2.02-.5.43-1.13.77-1.89.91-.81.18-1.56.66-2.11 1.32-.56.67-.89 1.51-.89 2.4 0 2.21 2.01 4 4.5 4 1.38 0 2.64-.55 3.54-1.46"></path>
-          </svg>
-        `;
-        statusMessageEl.textContent = data.message || 'Your blog is being processed. This may take a few minutes.';
-        progressContainerEl.style.display = 'block';
-        
-            } else {
-        // Pending or unknown state
-        statusCardEl.classList.add('pending');
-        statusIconEl.classList.add('pending');
-        statusValueEl.classList.add('pending');
-        progressBarEl.classList.add('pending');
-        statusMessageEl.textContent = 'Your blog is waiting to be processed.';
-        progressContainerEl.style.display = 'block';
-      }
-    }
-    
-    function displayBlogDetails(data) {
-      // Clear previous content
-      blogDetailsEl.innerHTML = '';
-      
-      if (data.blog_post || data.word_count || data.focus_keyword) {
-        // Enable HTML copy button and preview
-        if (data.blog_post) {
-          blogActionsEl.style.display = 'block';
-        }
-        
-        let detailsHTML = '';
-        
-        // Add focus keyword if available
-        if (data.focus_keyword) {
-          detailsHTML += `
-            <div class="meta-item">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-              <span class="meta-label">Focus Keyword:</span>
-              <span class="meta-value">${data.focus_keyword}</span>
-            </div>`;
-        }
-        
-        // Add word count if available
-        if (data.word_count) {
-          detailsHTML += `
-            <div class="meta-item">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="4 7 4 4 20 4 20 7"></polyline>
-                <line x1="9" y1="20" x2="15" y2="20"></line>
-                <line x1="12" y1="4" x2="12" y2="20"></line>
-              </svg>
-              <span class="meta-label">Word Count:</span>
-              <span class="meta-value">${data.word_count.toLocaleString()}</span>
-            </div>`;
-        }
-        
-        // Add keyword presence indicator if available
-        if (data.keyword_presence !== undefined) {
-          detailsHTML += `
-            <div class="meta-item">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${data.keyword_presence ? "#10b981" : "#ef4444"}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                ${data.keyword_presence ? 
-                  '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline>' : 
-                  '<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>'}
-              </svg>
-              <span class="meta-label">Keyword Presence:</span>
-              <span class="meta-value" style="color: ${data.keyword_presence ? "#10b981" : "#ef4444"}">${data.keyword_presence ? "Present" : "Missing"}</span>
-            </div>`;
-        }
-        
-        // Add video sources information
-        if (data.video_titles && Array.isArray(data.video_titles) && data.video_titles.length > 0) {
-          detailsHTML += `<div class="video-metadata">
-            <div class="meta-item">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
-                <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
-              </svg>
-              <span class="meta-label">Source Videos:</span>
-            </div>`;
-          
-          detailsHTML += `<ul style="margin-top: 8px; padding-left: 20px;">`;
-          data.video_titles.forEach((title, index) => {
-            const url = data.video_urls && data.video_urls[index] ? data.video_urls[index] : '#';
-            detailsHTML += `<li style="margin-bottom: 5px;"><a href="${url}" target="_blank" style="color: #3b82f6; text-decoration: none;">${title || 'Unnamed Video'}</a></li>`;
-          });
-          detailsHTML += `</ul></div>`;
-        }
-        
-        // Add the blog post preview iframe if available
-        if (data.blog_post) {
-          blogPreviewContainerEl.style.display = 'block';
-          
-          // Set up the preview iframe with the blog HTML content
-          setTimeout(() => {
-            const iframe = document.getElementById('blog-preview-frame');
-            if (iframe) {
-              const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
-              iframeDocument.open();
-              iframeDocument.write(data.blog_post);
-              iframeDocument.close();
-            }
-          }, 100);
-        }
-        
-        blogDetailsEl.innerHTML = detailsHTML;
-      } else {
-        blogDetailsEl.innerHTML = '<p>No additional details available.</p>';
-      }
-    }
-    
-    function showError(message) {
-      loadingEl.style.display = 'none';
-      errorContainerEl.style.display = 'block';
-      errorMessageEl.textContent = message;
-    }
-    
-    // Auto-refresh for pending/processing statuses
-    setInterval(() => {
-      if (statusValueEl.textContent === 'pending' || statusValueEl.textContent === 'processing') {
-        fetchStatus();
-      }
-    }, 30000); // Check every 30 seconds
+    // Remove the attribution from the HTML to avoid duplication
+    blogHTML = blogHTML.replace(attributionMatch[0], '');
+  }
+  
+  const iframe = document.getElementById('blog-preview-frame');
+  if (iframe) {
+    const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+    iframeDocument.open();
+    iframeDocument.write(blogHTML);
+    iframeDocument.close();
+  }
+}
+
+// Auto-refresh for pending/processing statuses
+setInterval(() => {
+  if (statusValueEl.textContent === 'pending' || statusValueEl.textContent === 'processing') {
+    fetchStatus();
+  }
+}, 30000); // Check every 30 seconds
   </script>
 </body>
 </html>
